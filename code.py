@@ -1,0 +1,103 @@
+
+# Practical: Clustering Algorithms
+# Dataset: Wine Recognition Dataset
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.datasets import load_wine
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans, AgglomerativeClustering
+from sklearn.metrics import silhouette_score, davies_bouldin_score
+from sklearn.decomposition import PCA
+
+# Step 1: Load the dataset
+wine = load_wine()
+X = pd.DataFrame(wine.data, columns=wine.feature_names)
+
+print("Dataset loaded successfully!")
+print("Number of samples:", X.shape[0])
+print("Number of features:", X.shape[1])
+display(X.head())
+
+# Step 2: Standardize the data
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+print("Data standardized successfully!")
+
+# Step 3: Create clustering models
+models = {
+    "K-Means": KMeans(
+        n_clusters=3,
+        random_state=42,
+        n_init=10
+    ),
+    "Agglomerative": AgglomerativeClustering(
+        n_clusters=3,
+        linkage="ward"
+    )
+}
+
+# Step 4: Train models and evaluate clustering
+results = []
+cluster_labels = {}
+
+for name, model in models.items():
+    labels = model.fit_predict(X_scaled)
+    cluster_labels[name] = labels
+
+    silhouette = silhouette_score(X_scaled, labels)
+    db_index = davies_bouldin_score(X_scaled, labels)
+
+    results.append({
+        "Algorithm": name,
+        "Number of Clusters": len(set(labels)),
+        "Silhouette Score": round(silhouette, 4),
+        "Davies-Bouldin Index": round(db_index, 4)
+    })
+
+# Step 5: Display results
+results_df = pd.DataFrame(results)
+
+print("\nClustering Evaluation Results")
+display(results_df)
+
+# Step 6: Reduce dimensions for visualization
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_scaled)
+
+# Step 7: Visualize clusters
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+for ax, (name, labels) in zip(
+    axes, cluster_labels.items()
+):
+    ax.scatter(
+        X_pca[:, 0],
+        X_pca[:, 1],
+        c=labels,
+        cmap="viridis",
+        s=40
+    )
+    ax.set_title(name + " Clustering")
+    ax.set_xlabel("Principal Component 1")
+    ax.set_ylabel("Principal Component 2")
+    ax.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+# Step 8: Identify the best algorithm by each metric
+best_silhouette = results_df.loc[
+    results_df["Silhouette Score"].idxmax(),
+    "Algorithm"
+]
+
+best_db = results_df.loc[
+    results_df["Davies-Bouldin Index"].idxmin(),
+    "Algorithm"
+]
+
+print("Best by Silhouette Score:", best_silhouette)
+print("Best by Davies-Bouldin Index:", best_db)
